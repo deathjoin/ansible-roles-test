@@ -1,0 +1,8 @@
+---
+# defaults file for check_internet
+host: "yandex.ru"
+port: 80
+state: "started"
+delay: 0
+timeout: 1
+connect_timeout: 10

@@ -1,0 +1,18 @@
+---
+# tasks file for check_internet
+- name: "Checking internet connection"
+  wait_for:
+    host: "{{ host }}"
+    port: "{{ port }}"
+    state: "{{ state }}"
+    delay: "{{ delay }}"
+    timeout: "{{ timeout }}"
+    connect_timeout: "{{ connect_timeout }}"
+  ignore_errors: yes
+  register: inet_connection
+  
+- debug: var=inet_connection
+
+- name: "Set variable"
+  set_fact: 
+    has_inet_connection: "{{ inet_connection.failed == False}}"

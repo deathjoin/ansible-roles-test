@@ -1,0 +1,7 @@
+---
+# defaults file for join.conf_make_install
+ignore_non_basic_linux_os_error: no
+build_deps_yum: no
+build_deps_apt: no
+configure_options: ""
+source_dir: "/usr/src"

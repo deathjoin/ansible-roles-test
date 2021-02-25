@@ -1,0 +1,127 @@
+---
+# tasks file for join.conf_make_install
+- name: "Run which git to find one"
+  command: "which git"
+  ignore_errors: yes
+  register: which_git
+
+- name: "Check the git, make installed"
+  set_fact:
+    is_git_installed: "{{ which_git.rc == 0 }}"    
+    
+- name: "Check if source remote, git or archive"
+  set_fact: 
+    is_source_remote: "{{ source is regex('^(http|https).*') }}"
+    is_source_git: "{{ source is regex('[.]git$') }}"
+    is_source_archive: "{{ source is regex('[.](tar|tar.gz|zip)') }}"
+    
+- name: "Check package manager is yum or apt"
+  set_fact:
+    is_pkg_mgr_yum_or_apt: "{{ ansible_pkg_mgr is regex('yum|apt')}}"
+
+- debug: var=is_source_remote
+- debug: var=is_source_git
+- debug: var=is_source_archive    
+- debug: var=is_git_installed
+- debug: var=is_pkg_mgr_yum_or_apt
+
+- name: "Fail because no yum or apt in system"
+  fail:
+    msg: "Failing because package manager neither yum or apt. You can pass ignore_non_basic_linux_os_error{{':'}}yes to make it run. You probably need to install build tools and dependecies by yourself."
+  when:
+    - ignore_non_basic_linux_os_error == False
+    - is_pkg_mgr_yum_or_apt == False
+
+- name: "Install @Development Tools via yum if needed"
+  yum:
+    name:
+      - "@Development Tools"
+    state: present
+  when:
+    - ansible_pkg_mgr == 'yum'
+    
+- name: "Install build-essential via apt if needed"
+  apt:
+    name:
+      - build-essential
+    state: present
+  when:
+    - ansible_pkg_mgr == 'apt'
+
+- name: "Install build dependencies via yum"
+  yum:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ build_deps_yum }}"
+  when: 
+    - ansible_pkg_mgr == 'yum'
+    - build_deps_yum is defined
+    - build_deps_yum is iterable
+    - build_deps_yum is not string
+    - build_deps_yum is not mapping
+
+- name: "Install build dependencies via apt"
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ build_deps_apt }}"
+  when:
+    - ansible_pkg_mgr == 'apt'
+    - build_deps_apt is defined
+    - build_deps_apt is iterable
+    - build_deps_apt is not string
+    - build_deps_apt is not mapping
+    
+- name: "Install git if needed"
+  package:
+    name: git
+    state: present
+  when: is_source_git
+  
+- name: "Get repo name"
+  set_fact: 
+    git_repo_name: "{{ source.split('/')[-1].split('.git')[0] }}"
+  when: is_source_git
+
+- debug: var=git_repo_name
+
+- name: "Clone git repo"
+  git:
+    repo: "{{ source }}"
+    dest: "{{ source_dir }}/{{ git_repo_name }}"
+    force: yes
+  when: is_source_git
+
+- name: "Set build directory"
+  set_fact: 
+    build_dir: "{{ source_dir }}/{{ git_repo_name }}"
+  when: is_source_git
+  
+- name: "Download & Extract archive"
+  unarchive:
+    remote_src: yes
+    src: "{{ source }}"
+    dest: "{{ source_dir }}"
+    list_files: yes
+  register: archive_contents
+  when: is_source_archive
+
+- name: "Set build directory"
+  set_fact:
+    build_dir: "{{ source_dir }}/{{ archive_contents.files[0].split('/')[0] }}"
+  when: is_source_archive
+  
+- name: "./configure"
+  command: "./configure {{ configure_options }}"
+  args:
+    chdir: "{{ build_dir }}/"
+     
+- name: "make"
+  command: "make"
+  args:
+    chdir: "{{ build_dir }}"
+
+- name: "make install"
+  command: "make install"
+  args:
+    chdir: "{{ build_dir }}"
