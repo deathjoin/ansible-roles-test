@@ -1,0 +1,34 @@
+- hosts: localhost
+  become: true
+  connection: local
+   
+  roles:
+    - join.check_internet
+    - role: join.make_install_from_source
+      vars:
+        source: "https://cache.ruby-lang.org/pub/ruby/3.0/ruby-3.0.0.tar.gz"
+        build_deps_yum:
+          - zlib 
+          - zlib-devel 
+          - openssl-devel
+          
+  # join.make_install_from_source options:
+  # source — Can be a link to git repo or archive download link.
+  # source_dir — Directory where source is going to be downloaded.
+  # ignore_non_basic_linux_os_error — Role will raise error if no yum or apt preset on system. Pass 'yes' to this option to silence error.
+  # build_deps_yum — A list of dependecies required to build software.
+  # build_deps_apt — A list of dependecies required to build software. 
+  # Packages may have a different names for debian and redhat based OS. So it can be passed seperately.
+  # configure_options — String of options for ./configure part.
+  
+          
+  tasks:
+    - debug: msg="Host has internet connection{{':'}} {{has_inet_connection}}"
+    
+    - name: "Get Ruby version"
+      command: "ruby -v"
+      register: ruby_version
+      
+    - debug: msg="Ruby version is{{':'}} {{ruby_version.stdout}}"
+      
+      
